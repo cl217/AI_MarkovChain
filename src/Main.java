@@ -11,14 +11,14 @@ public class Main {
 	public static int depth;
 	
 	public static void main (String[]args) {
+		
+		
 		d = 6;
 		depth = 3;
 		grid = new Grid();
 		GUI gui = new GUI();
 		gui.setVisible(true);
-
 		
-
 		
 		/*
 		Scanner scanner = new Scanner(System.in);

@@ -1,5 +1,7 @@
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Random;
 /**
  * 
@@ -9,11 +11,24 @@ import java.util.Random;
 public class Grid {
 
 	Piece[][] grid;
+	Pr[][] prGrid;
 	HashMap<Character, HashMap<Piece, String>> side0;
 	HashMap<Character, HashMap<Piece, String>> side1;
+	HashMap<Character, HashMap<Piece, String>> empty;
+	
+	HashMap<Integer, List<Pr>> possPit;
+	
+	
+	
 	
 	public Grid() {
+		
+		possPit = new HashMap<Integer, List<Pr>>();
+		
 		grid = new Piece[Main.d][Main.d];
+		prGrid = new Pr[Main.d][Main.d];
+		
+		
 		side0 = new HashMap<Character, HashMap<Piece, String>>();
 		side1 = new HashMap<Character, HashMap<Piece, String>>();
 		char[] c = {'W', 'H', 'M'};
@@ -67,6 +82,23 @@ public class Grid {
 			pitcount = 0;
 		}
 		
+		
+		//intial possibilites for pits
+		for(int y = 1; y < Main.d-1; y++) {
+			for(int x = 0; x < Main.d; x++) {
+				
+				prGrid[y][x] = new Pr(x, y);
+				prGrid[y][x].pP = (double) 1/Main.d;
+
+				if(!possPit.containsKey(y)) {
+					possPit.put(y, new ArrayList<Pr>());
+				}
+				possPit.get(y).add(prGrid[y][x]);
+				
+			}
+		}
+		
+		
 
 		//put alternating wumpus, hero, mage in bottom and top row
 		int alternate = 1;
@@ -80,6 +112,19 @@ public class Grid {
 			
 			Piece ai = new Piece(c,1);
 			Piece human = new Piece(c, 0);
+			
+			Pr prAI = new Pr(i, 0);
+			Pr prHuman = new Pr(i, Main.d-1);
+			
+			//set initial probabilites for human piece location
+			switch(alternate) {
+				case 1: prHuman.pW = 1; break;
+				case 2: prHuman.pH = 1; break;
+				case 3: prHuman.pM = 1; break;
+			}
+			prGrid[0][i] = prAI; //AI location initial pr is all 0
+			prGrid[Main.d-1][i] = prHuman;
+			
 			
 			grid[0][i] = ai;
 			grid[Main.d-1][i] = human;
@@ -95,42 +140,105 @@ public class Grid {
 		}
 		
 		Main.grid = this;
+		setSenses();
 		
+	}
+	
+
+	
+	public void setSenses() {
 		for( char c : side1.keySet() ) {
 			for(Piece p : side1.get(c).keySet()) {
-				setSenses(p);
+				setSensesP(p);
 			}
 		}
+		
 		
 		for( char c : side0.keySet() ) {
 			for(Piece p : side0.get(c).keySet()) {
-				setSenses(p);
+				//System.out.println("setSenses: " + p.name);
+				setSensesP(p);
 			}
 		}
+		
+		
+		
 	}
 	
-	
-	
-	public void setSenses(Piece p) {
-		for(int y = getY(p)-1; y <= getY(p)+1; y++) {
-			for(int x = getX(p)-1; x <= getX(p)+1; x++) {
-				if(isValidMove(getX(p), getY(p), x, y)) {
-					Piece adjP = Main.grid.getCell(x, y);
-					if(adjP == null || adjP.side == p.side ) {
+	public void setSensesP(Piece p) {
+		Pr pr = getPr(p);
+		pr.breeze = false;
+		pr.stench = false;
+		pr.noise = false;
+		pr.heat = false;
+		
+		//distribute pit pr
+		if(p.side == 1 && pr.pP != 0) {
+			possPit.get(pr.y).remove(pr);
+			for(Pr otherPr : possPit.get(pr.y)) {
+				otherPr.pP += (double) pr.pP/possPit.get(pr.y).size();
+			}
+		}
+		
+		pr.resetPr();
+		
+		
+		List<Pr> succ = succ(p);
+		
+		for(Pr adj : succ ) {
+			Piece adjP = getCell(adj.x, adj.y);
+			if(adjP == null || adjP.side == p.side ) {
+				continue;
+			}
+			switch(adjP.name) {
+				case 'P': pr.breeze = true; break;
+				case 'W': pr.stench = true; break;
+				case 'H': pr.noise = true; break;
+				case 'M': pr.heat = true; break;
+			}
+		}
+		//update probability
+		if(p.side == 1) {
+			for(Pr adj : succ) {
+				//elimates prob
+				if(!pr.breeze) {
+					List<Pr> possPitY = possPit.get(adj.y);
+					if(possPitY==null) {
 						continue;
 					}
-					switch(adjP.name) {
-						case 'P': p.breeze = true; break;
-						case 'W': p.stench = true; break;
-						case 'H': p.noise = true; break;
-						case 'M': p.heat = true; break;
+					possPitY.remove(adj);
+					//distribute prob to every other pit in the same row
+					for(Pr otherPr : possPitY) {
+						otherPr.pP += (double) adj.pP/possPitY.size();
 					}
+					adj.pP = 0.0;
+				}
+				if(!pr.stench) {
+					adj.pW = 0.0;
+				}
+				if(!pr.noise) {
+					adj.pH = 0.0;
+				}
+				if(!pr.heat) {
+					adj.pM = 0.0;
 				}
 			}
 		}
 	}
 	
 	
+	public List<Pr> succ( Piece p ){
+		List<Pr> succ = new ArrayList<Pr>();
+		for(int y = getY(p)-1; y <= getY(p)+1; y++) {
+			for(int x = getX(p)-1; x <= getX(p)+1; x++) {
+				if(isValidMove(getX(p), getY(p), x, y)) {
+					succ.add(prGrid[y][x]);
+				}
+			}
+		}
+		return succ;
+	}
+
 	public boolean isValidMove(int x1, int y1, int x2, int y2){
 		//checks bounds
 		if (x2 < 0) return false;
@@ -178,6 +286,7 @@ public class Grid {
             	}
 				grid[y1][x1] = null; 
 				grid[y2][x2] = null; 
+				setSenses();
 				return true;
             }
             
@@ -192,6 +301,7 @@ public class Grid {
             	}
             	grid[y2][x2] = grid[y1][x1];
             	grid[y1][x1] = null;
+            	setSenses();
             	return true;
             }else { //P1 dies
             	if(p1.side==0) {
@@ -200,6 +310,7 @@ public class Grid {
             		side1.get(p1.name).remove(p1);
             	}
             	grid[y1][x1] = null;
+            	setSenses();
             	return true;
             }
         }
@@ -212,7 +323,7 @@ public class Grid {
 		}else {
 			side1.get(grid[y2][x2].name).put(grid[y2][x2], xyStr(x2, y2));
 		}
-		
+		setSenses();
 		return true;
 	}
 	
@@ -229,27 +340,14 @@ public class Grid {
 		return size;
 	}
 	
-	/*
-	public int[] getCoord(Piece p) {
-		int[] coords = new int[2];
-		String[] split;
-		if(p.side == 0) {
-			split = side0.get(p.name).get(p).split(",");
-		}else {
-			split = side1.get(p.name).get(p).split(",");
-		}
-		coords[0] = Integer.parseInt(split[0]);
-		coords[1] = Integer.parseInt(split[1]);
-		return coords;
-	}
-	*/
-	
 	public int getX(Piece p) {
 		String coords;
 		if(p.side == 0) {
 			coords = side0.get(p.name).get(p);
-		}else {
+		}else if (p.side == 1){
 			coords = side1.get(p.name).get(p);
+		}else {
+			return -1;
 		}
 		
 		return Integer.parseInt(coords.substring(0, coords.indexOf(',')));
@@ -259,12 +357,46 @@ public class Grid {
 		String coords;
 		if(p.side == 0) {
 			coords = side0.get(p.name).get(p);
-		}else {
+		}else if (p.side == 1) {
 			coords = side1.get(p.name).get(p);
+		}else {
+			return -1;
 		}
 		
 		return Integer.parseInt(coords.substring(coords.indexOf(',')+1, coords.length()));
 	}
 	
+	public void swap(Piece p1, Piece p2) {
+		
+		char tname = p1.name;
+		int tside = p1.side;
+		
+		p1.name = p2.name;
+		p1.side = p2.side;
+		
+		p2.name = tname;
+		p2.side = tside;
+		
+	}
+	
+	public Pr getPr(Piece p) {
+		return prGrid[getY(p)][getX(p)];
+	}
+	
+	public void printSides() {
+		for( char c : side0.keySet() ) {
+			for(Piece p : side0.get(c).keySet()) {
+				System.out.print(p.getDisplayText());
+			}
+		}
+		System.out.println();
+		for( char c : side1.keySet() ) {
+			for(Piece p : side1.get(c).keySet()) {
+				System.out.print(p.getDisplayText());
+			}
+		}
+		System.out.println();
+		//System.out.println("\n====");
+	}
 	
 }

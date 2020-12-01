@@ -57,6 +57,7 @@ public class Node implements Comparable<Node> {
 			return -1;
 		}
 		
+		/*
 		if(this.hAdjacent > o.hAdjacent) {
 			return 1;
 		}else if(this.hAdjacent < o.hAdjacent) {
@@ -68,6 +69,7 @@ public class Node implements Comparable<Node> {
 		}else if(this.hDistance < o.hNumPieces) {
 			return -1;
 		}
+		*/
 		
 		return 0;
 	}
