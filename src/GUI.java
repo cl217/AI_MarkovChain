@@ -177,7 +177,7 @@ public class GUI extends javax.swing.JFrame  {
     				//text = display(x,y);
     			}
     			
-	            System.out.println(text);
+	            //System.out.println(text);
 				//button.setText("<html><u>" + text.replaceAll("\\n", "</u><br>") + "</html>");
 	            button.setFont(new Font("Arial", Font.BOLD, 15));
 	            button.setMargin(new Insets(0, 0, 0, 0));
@@ -218,11 +218,13 @@ public class GUI extends javax.swing.JFrame  {
 	            		}
 	            		*/
 	            		
+	            		/*
 	            		System.out.print("pW(" +  Math.floor(prTest.pW * 100) / 100 );
 	            		System.out.print("), pH(" + Math.floor(prTest.pH * 100) / 100 );
 	            		System.out.print("), pM("+ Math.floor(prTest.pM * 100) / 100 );
 	            		System.out.print("), pP(" + Math.floor(prTest.pP * 100) / 100);
 	            		System.out.println(")");
+	            		*/
 	            		
 	            		
 	            		

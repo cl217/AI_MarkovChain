@@ -178,9 +178,10 @@ public class Grid {
 			for(Pr otherPr : possPit.get(pr.y)) {
 				otherPr.pP += (double) pr.pP/possPit.get(pr.y).size();
 			}
+			pr.resetPr();
 		}
 		
-		pr.resetPr();
+
 		
 		
 		List<Pr> succ = succ(p);
@@ -197,10 +198,11 @@ public class Grid {
 				case 'M': pr.heat = true; break;
 			}
 		}
-		//update probability
+		
+		//update AI discover pr
 		if(p.side == 1) {
 			for(Pr adj : succ) {
-				//elimates prob
+				//narrows pr of Pit
 				if(!pr.breeze) {
 					List<Pr> possPitY = possPit.get(adj.y);
 					if(possPitY==null) {
@@ -213,6 +215,8 @@ public class Grid {
 					}
 					adj.pP = 0.0;
 				}
+				
+				
 				if(!pr.stench) {
 					adj.pW = 0.0;
 				}
@@ -224,6 +228,41 @@ public class Grid {
 				}
 			}
 		}
+		
+		//update human move PR
+		
+		if(p.side == 0) {
+			System.out.println("human move");
+			for(char c : side0.keySet()) {
+				for(Piece pHuman : side0.get(c).keySet() ) {
+					List<Pr> succH = succ(pHuman);
+					succH.add(getPr(pHuman)); //add current to list too
+					double initPr = -1;
+					switch(pHuman.name) {
+						case 'W': initPr = getPr(pHuman).pW; break;
+						case 'H':
+						case 'M':
+					}
+					
+					for(Pr prH : succH) {
+						switch(pHuman.name) {
+							case 'W': prH.pW = (double) initPr/succH.size(); break;
+							case 'H':
+							case 'M':
+						}
+						
+
+					}
+					
+				}
+			}
+		}
+		
+		
+		
+		
+		
+		
 	}
 	
 	
