@@ -12,6 +12,16 @@ public class Main {
 	
 	public static void main (String[]args) {
 		
+		/*
+		Pr pr = new Pr(1, 1);
+		pr.pW = 5;
+		
+		double[] arr = new double[] {pr.pW};
+		
+		pr.pW = 10;
+		System.out.println(arr[0]);
+		*/
+		
 		
 		d = 6;
 		depth = 3;

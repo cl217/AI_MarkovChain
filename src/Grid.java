@@ -18,12 +18,18 @@ public class Grid {
 	
 	HashMap<Integer, List<Pr>> possPit;
 	
+	List<Pr> possHuman;
+	
+	int nPossW;
+	int nPossH;
+	int nPossM;
 	
 	
 	
 	public Grid() {
 		
 		possPit = new HashMap<Integer, List<Pr>>();
+		possHuman = new ArrayList<Pr>();
 		
 		grid = new Piece[Main.d][Main.d];
 		prGrid = new Pr[Main.d][Main.d];
@@ -69,6 +75,9 @@ public class Grid {
 	
 	private void initializeGrid() {
 
+		nPossW = Main.d/3;
+		nPossH = Main.d/3;
+		nPossM = Main.d/3;
 		
 		//put (d/3)-1 pits in random cells in each row
 		Random rand = new Random();
@@ -115,6 +124,9 @@ public class Grid {
 			
 			Pr prAI = new Pr(i, 0);
 			Pr prHuman = new Pr(i, Main.d-1);
+			possHuman.add(prHuman);
+			
+			
 			
 			//set initial probabilites for human piece location
 			switch(alternate) {
@@ -147,6 +159,8 @@ public class Grid {
 
 	
 	public void setSenses() {
+		
+		//this gets called after human and ai move
 		for( char c : side1.keySet() ) {
 			for(Piece p : side1.get(c).keySet()) {
 				setSensesP(p);
@@ -165,7 +179,11 @@ public class Grid {
 		
 	}
 	
+
+	
+	
 	public void setSensesP(Piece p) {
+		
 		Pr pr = getPr(p);
 		pr.breeze = false;
 		pr.stench = false;
@@ -201,6 +219,28 @@ public class Grid {
 		
 		//update AI discover pr
 		if(p.side == 1) {
+			
+			Pr parent = getPr(p);
+			double dist_pW = parent.pW;
+			double dist_pH = parent.pH;
+			double dist_pM = parent.pM;
+			if(parent.pW != 0) {
+				parent.pW = 0;
+				nPossW--;
+			}
+			if(parent.pH != 0) {
+				parent.pH = 0;
+				nPossH--;
+			}
+			
+			if(parent.pM != 0) {
+				parent.pM = 0;
+				nPossM--;
+			}
+			
+			
+			possHuman.remove(getPr(p));
+			
 			for(Pr adj : succ) {
 				//narrows pr of Pit
 				if(!pr.breeze) {
@@ -217,53 +257,94 @@ public class Grid {
 				}
 				
 				
-				if(!pr.stench) {
+				if(!pr.stench && adj.pW != 0) {
+					dist_pW += adj.pW;
 					adj.pW = 0.0;
+					nPossW--;
 				}
-				if(!pr.noise) {
+				if(!pr.noise && adj.pH != 0) {
+					dist_pH += adj.pH;
 					adj.pH = 0.0;
+					nPossH--;
 				}
-				if(!pr.heat) {
+				if(!pr.heat && adj.pM != 0) {
+					dist_pM += adj.pM;
 					adj.pM = 0.0;
+					nPossM--;
 				}
+				
+				if(adj.pW == 0 && adj.pH == 0 && adj.pM == 0) {
+					//System.out.println("Removing (" + adj.x + "," + adj.y + ")");
+					possHuman.remove(adj);
+				}
+				
 			}
-		}
-		
-		//update human move PR
-		
-		if(p.side == 0) {
-			System.out.println("human move");
-			for(char c : side0.keySet()) {
-				for(Piece pHuman : side0.get(c).keySet() ) {
-					List<Pr> succH = succ(pHuman);
-					succH.add(getPr(pHuman)); //add current to list too
-					double initPr = -1;
-					switch(pHuman.name) {
-						case 'W': initPr = getPr(pHuman).pW; break;
-						case 'H':
-						case 'M':
+			
+			//distribute, foreach pW!=0, pW += dist/sizeof(pW!=0)
+			List<Pr> ones = distribute(dist_pW, dist_pH, dist_pM);
+			
+			
+			while(!ones.isEmpty()) {
+				System.out.println("ones not empty: " + ones.size());
+				dist_pW = 0;
+				dist_pH = 0;
+				dist_pM = 0;
+				for(Pr one : ones) {
+					
+					if(one.pW == 1 && (one.pH != 0 || one.pM != 0)) {
+						dist_pH += one.pH;
+						dist_pM += one.pM;
+						one.pH = 0;
+						one.pM = 0;
+					}else if(one.pH == 1 && (one.pW != 1 || one.pM != 0)) {
+						dist_pW += one.pW;
+						dist_pM += one.pM;
+						one.pW = 0;
+						one.pM = 0;
+					}else if(one.pM == 1 && (one.pH != 0 || one.pW != 0)) {
+						dist_pW += one.pW;
+						dist_pH += one.pH;
+						one.pW = 0;
+						one.pH = 0;
 					}
 					
-					for(Pr prH : succH) {
-						switch(pHuman.name) {
-							case 'W': prH.pW = (double) initPr/succH.size(); break;
-							case 'H':
-							case 'M':
-						}
-						
-
-					}
-					
 				}
+				ones = distribute(dist_pW, dist_pH, dist_pM); 
 			}
-		}
-		
-		
-		
-		
-		
-		
+			
+			
+			
+		}		
 	}
+	
+	
+	
+	public List<Pr> distribute(double dist_pW, double dist_pH, double dist_pM){
+		List<Pr> ones = new ArrayList<Pr>();
+		for(Pr prH : possHuman) {
+			if(prH.pW != 0 && dist_pW != 0) {
+				prH.pW += dist_pW/nPossW;
+			}
+			if(prH.pH != 0  && dist_pH != 0) {
+				prH.pH += dist_pH/nPossH;
+			}
+			if(prH.pM != 0 && dist_pM != 0) {
+				prH.pM += dist_pM/nPossM;
+			}
+			
+			if(prH.pW == 1 && (prH.pH != 0 || prH.pM != 0)) {
+				ones.add(prH);
+			}else if(prH.pH == 1 && (prH.pW != 0 || prH.pM != 0)) {
+				ones.add(prH);
+			}else if(prH.pM == 1 && (prH.pH != 0 || prH.pW != 0)) {
+				ones.add(prH);
+			}
+		}
+		return ones;
+	}
+	
+	
+	
 	
 	
 	public List<Pr> succ( Piece p ){
@@ -294,20 +375,29 @@ public class Grid {
 	    if (Math.abs(x2-x1) > 1) return false;
 	    if (Math.abs(y2-y1) > 1) return false;
 	    
+	    /*
         //checks if same side	
-        if(grid[y2][x2] != null && grid[y1][x1].side == grid[y2][x2].side) {
+        if(grid[y1][x1] != null && grid[y2][x2] != null && grid[y1][x1].side == grid[y2][x2].side) {
     		return false;
         }
+        */
 
 		return true;
 	        
 	}
 
+	
 	public boolean move(int x1, int y1, int x2, int y2) {
         if (!isValidMove(x1, y1, x2, y2)){
             return false;
         }
+        if( getCell(x1,y1) != null && getCell(x2, y2) != null && getCell(x1,y1).side == getCell(x2, y2).side) {
+        	return false;
+        }
         
+        int side = grid[y1][x1].side;
+        Pr humanDie = null;
+        char humanDiePname = 'a';
         //checks current grid piece
         if(grid[y2][x2] != null) {
             //battle
@@ -317,6 +407,8 @@ public class Grid {
             if(p1.name == p2.name) {
             	//both die
             	if(p1.side==0) {
+            		humanDie = getPr(p1);
+            		humanDiePname = p1.name;
             		side0.get(p1.name).remove(p1);
             		side1.get(p2.name).remove(p2);
             	}else {
@@ -325,13 +417,12 @@ public class Grid {
             	}
 				grid[y1][x1] = null; 
 				grid[y2][x2] = null; 
-				setSenses();
-				return true;
-            }
-            
-            //p2 dies
-            if( ( p1.name=='W' && p2.name=='M' ) || ( p1.name=='H' && p2.name=='W' ) || ( p1.name=='M' && p2.name=='H' ) ) {
+
+            } else if( ( p1.name=='W' && p2.name=='M' ) || ( p1.name=='H' && p2.name=='W' ) || ( p1.name=='M' && p2.name=='H' ) ) {
+                //p2 dies
             	if(p2.side==0) {
+            		humanDie = getPr(p2);
+            		humanDiePname = p2.name;
             		side0.get(p2.name).remove(p2);
             		side1.get(p1.name).put(p1, xyStr(x2, y2));
             	}else {
@@ -340,31 +431,211 @@ public class Grid {
             	}
             	grid[y2][x2] = grid[y1][x1];
             	grid[y1][x1] = null;
-            	setSenses();
-            	return true;
             }else { //P1 dies
             	if(p1.side==0) {
+               		humanDie = getPr(p1);
+               		humanDiePname = p1.name;
             		side0.get(p1.name).remove(p1);
             	}else {
             		side1.get(p1.name).remove(p1);
             	}
             	grid[y1][x1] = null;
-            	setSenses();
-            	return true;
             }
+        }else {
+            //(x2, y2) empty
+    		grid[y2][x2] = grid[y1][x1];
+    		grid[y1][x1] = null;
+    		if(grid[y2][x2].side == 0) {
+    			side0.get(grid[y2][x2].name).put(grid[y2][x2], xyStr(x2, y2));
+    		}else {
+    			side1.get(grid[y2][x2].name).put(grid[y2][x2], xyStr(x2, y2));
+    		}
+        }
+        
+        if(humanDie != null) {
+        	System.out.println("Human die");
+        	//cut
+        	//clear dead piece's percentages
+        	deadHumanP(humanDiePname);
         }
        
-        //(x2, y2) empty
-		grid[y2][x2] = grid[y1][x1];
-		grid[y1][x1] = null;
-		if(grid[y2][x2].side == 0) {
-			side0.get(grid[y2][x2].name).put(grid[y2][x2], xyStr(x2, y2));
-		}else {
-			side1.get(grid[y2][x2].name).put(grid[y2][x2], xyStr(x2, y2));
+		if(side == 0) {
+			updateHumanP();
 		}
 		setSenses();
+		
+		
 		return true;
 	}
+	
+	
+	public void deadHumanP(char name) {
+		double numPLeft = (double) side0.get(name).keySet().size();
+		double multiplyBy = (numPLeft == 0)? 0: numPLeft/(numPLeft+1);
+		
+		for(Pr pr : possHuman) {
+			switch(name) {
+				case 'W': 
+					pr.pW *= multiplyBy;
+					if(pr.pW == 0) {
+						nPossW--;
+					}
+					break;
+				case 'H': 
+					System.out.println(pr.pH + " * " + multiplyBy );
+					pr.pH *= multiplyBy;
+					if(pr.pH == 0) {
+						nPossH--;
+						System.out.println("nPossH: " + nPossH);
+					}
+					break;
+				case 'M': 
+
+					pr.pM *= multiplyBy;
+					if(pr.pM == 0) {
+						nPossM--;
+					}
+					break;
+			}
+			if(pr.pW == 0 && pr.pM == 0 && pr.pH == 0) {
+				possHuman.remove(pr);
+			}
+		}
+	}
+	
+	
+	public void updateHumanP() {
+		/*
+		System.out.println("========updateHumanp==============");
+		
+		int count = 0;
+		for(Pr pr : possHuman) {
+			if(pr.pW != 0) {
+				count++;
+			}
+			if(pr.x == 1 && pr.y == 1) {
+				//System.out.println("(1,1): " + pr.pW);
+			}
+		}
+		System.out.println("   beforeExpansionPossWumpus=" + count);
+		*/
+		
+		//HashMap<Pr, Integer> map = new HashMap<Pr, Integer>();
+		ArrayList<Pr> newPossHuman = new ArrayList<Pr>();
+		
+		
+		HashMap<Pr, double[]> originalPr = new HashMap<Pr, double[]>(); //0-pW, 1-pH, 2-pM
+		for(Pr pr : possHuman) {
+			double[] prArr = new double[] {pr.pW, pr.pH, pr.pM}; 
+			originalPr.put(pr, prArr);
+			
+
+			pr.pW = 0;
+			pr.pH = 0;
+			pr.pM = 0;
+			
+		}
+		
+		
+		for(Pr prH : possHuman) {
+			List<Pr> succ =  succ(prH, originalPr);
+			
+			double[] prArr = originalPr.get(prH);
+			
+			/*
+			if(prArr[0] != 0) {
+				System.out.println("Pr(" +prH.x + "," +prH.y + "), succSize=" + succ.size() + ", Pw=" +prArr[0]);
+			}
+			*/
+			
+			//initial values
+			int divBy = succ.size();
+			//map.put(prH, divBy);
+
+			for(Pr s : succ) {
+				
+				/*
+				if(s.x == 0 && s.y == 4 ) {
+					System.out.println("\n*** debug (0,4) ***");
+					System.out.println("prArr[0] = " + prArr[0] + ", divBy=" + divBy);
+					System.out.println("before) s.pW = " + s.pW);
+				}
+				*/
+				
+				s.pW += (double) prArr[0]/divBy;
+				s.pH += (double) prArr[1]/divBy;
+				s.pM += (double) prArr[2]/divBy;
+				
+				/*
+				if(s.x == 0 && s.y == 4 ) {
+					System.out.println("after) s.pW = " + s.pW);
+					System.out.println("*** end debug (0,4) ***\n");
+				}
+				*/
+				
+				if(!possHuman.contains(s) && !newPossHuman.contains(s)) {
+					newPossHuman.add(s);
+				}
+			}
+		}
+		
+	
+		
+		possHuman.addAll(newPossHuman);
+		nPossW = 0;
+		nPossH = 0;
+		nPossM = 0;
+		for(Pr pr : possHuman) {
+			if(pr.pW != 0) {
+				nPossW++;
+			}
+			if(pr.pH != 0) {
+				nPossH++;
+			}
+			if(pr.pM != 0) {
+				nPossM++;
+			}
+		}
+		
+		/*
+		count = 0;
+		for(Pr pr : possHuman) {
+			if(pr.pW != 0) {
+				count++;
+			}
+		}
+		System.out.println("   afterExpansionPossWumpus=" + count);
+		for(Pr pr : possHuman) {
+			if(pr.pW != 0) {
+				System.out.println("           (" + pr.x + ","+pr.y + ") | pW=" +pr.pW );
+			}
+		}
+		*/
+		
+	}
+	
+	public List<Pr> succ( Pr pr , HashMap<Pr, double[]> origPr){
+		List<Pr> succ = new ArrayList<Pr>();
+		for(int y = pr.y-1; y <= pr.y+1; y++) {
+			for(int x = pr.x-1; x <= pr.x+1; x++) {
+				if(isValidMove(pr.x, pr.y, x, y)) {
+					//System.out.println("validMove: " + x + "," + y );
+					double[] arr = origPr.get(prGrid[y][x]);
+					if(arr == null || (arr[0] != 1 && arr[1] != 1 && arr[2] != 1 && prGrid[y][x].pP != 1)) {
+						if(grid[y][x] != null && grid[y][x].side == 1) {
+							continue;
+						}
+						succ.add(prGrid[y][x]);
+					}
+				}
+			}
+		}
+		succ.add(pr);
+		//System.out.println("succSize: " + succ.size());
+		return succ;
+	}
+	
+	
 	
 	public Piece getCell(int x, int y) {
 		return grid[y][x];

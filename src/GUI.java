@@ -124,9 +124,14 @@ public class GUI extends javax.swing.JFrame  {
 				//update text
 				
 				String txt = "";
-				if( Main.grid.getCell(x, y)!=null) {
+				if( p!=null) {
 					if( !fog || (fog && Main.grid.getCell(x, y).side == 0) ) {
 						txt = Main.grid.getCell(x, y).getDisplayText();
+					}
+					if( fog && p.name == 'P') {
+						button.setBackground(Color.LIGHT_GRAY);
+					}else if(!fog && p.name == 'P') {
+						button.setBackground(new Color(153, 102, 0)); //brown for pip
 					}
 				}
 				txt += "\n" + Main.grid.prGrid[y][x].getDisplayText();
@@ -158,7 +163,9 @@ public class GUI extends javax.swing.JFrame  {
     			JButton button = new JButton();
     			button.setVerticalTextPosition(SwingConstants.BOTTOM);
     			button.setHorizontalTextPosition(SwingConstants.CENTER);
-    			String text = "";
+    			
+    			
+    			//String text = "";
     			if( Main.grid.getCell(x, y) != null) {
 					//text = Main.grid.getCell(x, y).getDisplayText();
     				//text = display(x,y);
@@ -179,6 +186,9 @@ public class GUI extends javax.swing.JFrame  {
     			
 	            //System.out.println(text);
 				//button.setText("<html><u>" + text.replaceAll("\\n", "</u><br>") + "</html>");
+    			
+    			
+    			
 	            button.setFont(new Font("Arial", Font.BOLD, 15));
 	            button.setMargin(new Insets(0, 0, 0, 0));
 	            
@@ -341,7 +351,6 @@ public class GUI extends javax.swing.JFrame  {
 				            			updateSensesDisplay();
 				            				
 			            				System.out.println("AI has moved.");
-
 		            				}else {
 		            					System.out.println("Ai could not make a move.");
 		            				}
@@ -363,6 +372,7 @@ public class GUI extends javax.swing.JFrame  {
 
 	            buttonList.add(button);
         		button.setPreferredSize(new Dimension(bSize,bSize));
+        		//updateButtonDisplay();
                 topPanel.add(button);
     		} //end x loop
     	} //end y loop
@@ -390,54 +400,10 @@ public class GUI extends javax.swing.JFrame  {
 			public void itemStateChanged(ItemEvent event){
 				if(fogCheckBox.isSelected()) {
 					fog = true;
-			    	for(int y = 0; y < Main.d; y++) {
-			    		for(int x = 0; x < Main.d; x++) {
-			    			JButton button = buttonList.get(y*Main.d + x);
-			    			//String text = display(x, y);
-			    			if( Main.grid.getCell(x, y) != null ) {
-								if(Main.grid.getCell(x, y).side == 0) {
-									//button.setForeground(human);
-								}else {
-									if(Main.grid.getCell(x, y).name != 'P') {
-										button.setIcon(iconMap.get("Empty"));
-									}
-									button.setBackground(Color.LIGHT_GRAY);
-								}
-			    			}else{
-			    				button.setBackground(Color.LIGHT_GRAY);
-			    			}
-			    			//button.setText("<html><u>" + text.replaceAll("\\n", "</u><br>") + "</html>");
-			    		}
-			    	}
-					
-					
+					updateButtonDisplay();
 					
 				}else {
 					fog = false;
-			    	for(int y = 0; y < Main.d; y++) {
-			    		for(int x = 0; x < Main.d; x++) {
-			    			JButton button = buttonList.get(y*Main.d + x);
-			    			String text = "";
-			    			if(Main.grid.getCell(x, y)!= null) {
-								//text = display(x,y);
-								if( Main.grid.getCell(x, y).name == 'P') {
-									
-									button.setBackground(new Color(153, 102, 0));
-								}else {
-									button.setBackground(Color.LIGHT_GRAY);
-									if(Main.grid.getCell(x, y).side == 0) {
-										button.setForeground(human);
-									}else {
-										button.setForeground(AI);
-									}
-								}
-			    			}else{
-			    				button.setBackground(Color.LIGHT_GRAY);
-			    				//text = display(x,y);
-			    			}
-			    			button.setText("<html><u>" + text.replaceAll("\\n", "<br>") + "</u></html>");
-			    		}
-			    	}
 			    	updateButtonDisplay();
 		        }
 			}
